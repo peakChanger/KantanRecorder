@@ -15,7 +15,7 @@ class Recorder:
     ):
         self.speaker = sc.default_speaker()
         self.mics = sc.all_microphones(include_loopback=True)
-        self.defaulf_mic = self.mics[0]
+        self.current_mic = self.mics[0]
 
         self.sample_rate = sample_rate
         self.format = "wav"
@@ -33,19 +33,18 @@ class Recorder:
         return list(self.mics)
 
     def set_mic(self, index: int):
-        self.defaulf_mic = self.mics[index]
+        self.current_mic = self.mics[index]
 
-    def record(self):
-        def record_audio():
-            with self.defaulf_mic.recorder(
+    def record(self,mic_index :int = 0):
+        def record_audio(mic_index:int):
+            self.current_mic = self.mics[mic_index]
+            with self.current_mic.recorder(
                 channels=self.channels,
                 samplerate=self.sample_rate,
                 blocksize=512,
-                # exclusive_mode=True,
             ) as rc:
                 while True:
                     data = rc.record(numframes=self.sample_rate)
-                    # print(type(data), type(data[0]))
                     self.audio_queue.put(data)
                     if self.stop_flag:
                         self.audio_queue.put(None)
@@ -67,28 +66,33 @@ class Recorder:
                             break
                         audio_data = (audio_data * self.bandwidth_int).astype(np.int16)
                         wf.writeframes(audio_data.tobytes())
-                        # now = datetime.datetime.now().strftime("%H%M%S")
-                        # print(now)
                     except queue.Empty:
                         pass
 
+        # if self._isDeviceChanged():
+            # return False
+
         self.stop_flag = False
-        record_thread = threading.Thread(target=record_audio)
+        record_thread = threading.Thread(target=record_audio, args=(mic_index,))
         save_thread = threading.Thread(target=write_file)
 
-        # print("start")
         record_thread.daemon = True
         save_thread.daemon = True
         record_thread.start()
         save_thread.start()
-        # try:
-        #     while True:
-        #         if self.stop_flag:
-        #             break
-        #         time.sleep(1)
-        # except KeyboardInterrupt:
-        #     # print("stop")
-        #     self._stop_record()
+
+    def _isDeviceChanged(self) -> bool:
+        """prevent devices have changed"""
+        new_list = sc.all_microphones(include_loopback=True)
+
+        if len(new_list) != len(self.mics):
+            return True
+        
+        for new, old in zip(new_list, self.mics):
+            if new != old:
+                return True
+        
+        return False
 
     def _stop_record(self):
         self.stop_flag = True
@@ -104,4 +108,3 @@ class Recorder:
 if __name__ == "__main__":
     rec = Recorder()
     rec.record()
-    # print(list(rec.mics))

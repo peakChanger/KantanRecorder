@@ -1,7 +1,7 @@
 import time
 import configparser
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from recorder import Recorder
 
 
@@ -30,7 +30,6 @@ class UI(tk.Tk):
         self.resizable(False, False)
         self.iconbitmap("./img/icon.ico")
 
-
         self.padx = 10
         self.pady = 10
         self.grid_columnconfigure(index=0, weight=1)
@@ -52,9 +51,13 @@ class UI(tk.Tk):
         self.img_record.zoom(img_size, img_size)
         self.img_stop = tk.PhotoImage(file="./img/stop.png")
         self.img_stop.zoom(img_size, img_size)
-        
-        self.btn_record = tk.Button(self.frame_indicator, image=self.img_record, command=self.record_stop_action)
-        self.btn_record.config(height=img_size * 7, width=img_size * 7, borderwidth=0,  highlightthickness=0)
+
+        self.btn_record = tk.Button(
+            self.frame_indicator, image=self.img_record, command=self.record_stop_action
+        )
+        self.btn_record.config(
+            height=img_size * 7, width=img_size * 7, borderwidth=0, highlightthickness=0
+        )
         self.btn_record.grid(
             column=0, row=0, padx=self.padx, pady=self.pady, sticky="ns"
         )
@@ -74,14 +77,12 @@ class UI(tk.Tk):
         self.frame_setting.grid_rowconfigure(0, weight=1)
 
         # audio source
-        self.list_temp = ["Record Source"]
-        self.list_audio_source = tk.StringVar()
-        self.list_audio_source.set(self.list_temp[0])
-        self.menu_audio_source = tk.OptionMenu(
-            self.frame_setting, self.list_audio_source, *self.list_temp
+        self.list_audio_source = ["Record Source"]
+        self.combobox_audio_source = ttk.Combobox(
+            self.frame_setting, values=self.list_audio_source, state="readonly"
         )
-        self.menu_audio_source.config()
-        self.menu_audio_source.grid(column=0, row=0, columnspan=3, sticky="ew")
+        self.combobox_audio_source.config()
+        self.combobox_audio_source.grid(column=0, row=0, columnspan=3, sticky="ew")
 
         self.init_recorder()
         self._update_device_menu()
@@ -92,14 +93,12 @@ class UI(tk.Tk):
         self.rec = Recorder()
 
     def _update_device_menu(self):
-        menu = self.menu_audio_source["menu"]
-        menu.delete(0, "end")
-        devices = self.rec.get_mics()
-        for _, d in enumerate(devices):
-            menu.add_command(
-                label=d, command=lambda value=d: self.list_audio_source.set(value)
-            )
-        self.list_audio_source.set(devices[0])
+        self.list_audio_source = self.rec.get_mics()
+        self.combobox_audio_source['values'] = self.list_audio_source
+        self.combobox_audio_source.current(0)
+
+    def _popup_error(self, message:str):
+        messagebox.showerror("Error", message)
 
     def _update_timer(self):
         if self.isRec:
@@ -112,7 +111,7 @@ class UI(tk.Tk):
 
     def _clear_timer(self):
         self.timer = 0
-        self.label_timer.config(text = "00:00:00")
+        self.label_timer.config(text="00:00:00")
 
     def _on_closing(self):
         if messagebox.askokcancel("Quit", "Are you sure?"):
@@ -123,23 +122,22 @@ class UI(tk.Tk):
         if self.isRec:
             self.isRec = False
             self._stop_record()
-            time.sleep(1/2) # prevent toggle too fast
+            time.sleep(1 / 2)  # prevent toggle too fast
         else:
             self.isRec = True
             self._start_record()
 
     def _start_record(self):
         self._clear_timer()
-        self.rec.record()
+        self.rec.record(self.combobox_audio_source.current())
         self._update_timer()
         self.btn_record.config(image=self.img_stop)
-        self.menu_audio_source.config(state="disabled")
+        self.combobox_audio_source.config(state="disabled")
 
     def _stop_record(self):
         self.rec._stop_record()
         self.btn_record.config(image=self.img_record)
-        self.menu_audio_source.config(state="normal")
-
+        self.combobox_audio_source.config(state="normal")
 
     def start(self):
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
