@@ -1,34 +1,19 @@
+import base64
+import uuid
 import time
-import configparser
 import tkinter as tk
+from os import remove as osre
 from tkinter import messagebox, ttk
 from recorder import Recorder
-
-
-class Setting:
-    def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config["Recorder"] = {
-            "saveFolder": "",
-            "format": "",
-            "sampleRate": "",
-            "bitrate": "",
-        }
-
-    def read_setting(self, filepath: str):
-        """讀取設定"""
-
-    def write_setting(self, filepath: str):
-        """寫入設定"""
-
+from img.icon import imgIcon, imgStop, imgRecord
 
 class UI(tk.Tk):
     def __init__(self):
-        super().__init__()
+        super().__init__() # 用於呼叫父類別的__init__()
         self.title("Recorder")
         self.geometry("280x150")
         self.resizable(False, False)
-        self.iconbitmap("./img/icon.ico")
+        self._set_icon()
 
         self.padx = 10
         self.pady = 10
@@ -47,9 +32,9 @@ class UI(tk.Tk):
 
         # record button
         img_size = 10
-        self.img_record = tk.PhotoImage(file="./img/record.png")
+        self.img_record = tk.PhotoImage(data = base64.b64decode(imgRecord))
         self.img_record.zoom(img_size, img_size)
-        self.img_stop = tk.PhotoImage(file="./img/stop.png")
+        self.img_stop = tk.PhotoImage(data = base64.b64decode(imgStop))
         self.img_stop.zoom(img_size, img_size)
 
         self.btn_record = tk.Button(
@@ -97,6 +82,13 @@ class UI(tk.Tk):
         self.combobox_audio_source['values'] = self.list_audio_source
         self.combobox_audio_source.current(0)
 
+    def _set_icon(self):
+        tmpFileName = f"{str(uuid.uuid4())}.ico"
+        with open(tmpFileName, 'wb+') as tmpIcon: 
+            tmpIcon.write(base64.b64decode(imgIcon))
+        self.iconbitmap(tmpFileName)
+        osre(tmpFileName)
+
     def _popup_error(self, message:str):
         messagebox.showerror("Error", message)
 
@@ -142,6 +134,7 @@ class UI(tk.Tk):
     def start(self):
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.mainloop()
+
 
 
 def main():
